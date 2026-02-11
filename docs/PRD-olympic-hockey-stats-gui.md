@@ -1,23 +1,25 @@
 # Product Requirements Document (PRD)
 
 ## Product Name
-Olympic Hockey Stats Tracker
+Olympic Hockey Stats Tracker (Full-Stack Web)
 
 ## Document Owner
 Product/Engineering
 
 ## Version
-v1.1 (Decision Update)
+v2.1 (Single Full-Stack App: React + Vite)
 
 ## 1) Overview
-Build a Python application that automatically retrieves Olympic hockey statistics and live game data, then displays it in a user-friendly GUI. The app should allow users to search and sort by team and player metrics to track standings and performance over time.
+Build a **single full-stack web application** that retrieves Olympic hockey statistics and live game data, then displays it in a modern browser-based UI built with **React + Vite**. The app should allow users to search and sort by team and player metrics to track standings and performance over time.
 
 The solution must:
-- Use a Python virtual environment (`venv`) for local development/runtime isolation.
+- Use **one deployable application** (not separate front-end/back-end apps).
+- Use **React + Vite + TypeScript** for the UI.
+- Include server-side API routes in the same project/runtime for provider integration, caching, and CSV export.
 - Store configurable values (API endpoints, keys, update intervals, etc.) in environment variables.
-- Keep GUI theming in a separate, reusable file that can be shared across views.
+- Keep UI theming in separate reusable files shared across views.
 - Support both Olympic men’s and women’s hockey tournaments.
-- Run on Windows, macOS, and Linux.
+- Run in modern browsers and be deployable on Windows, macOS, and Linux.
 
 ---
 
@@ -44,16 +46,17 @@ Goal: choose the source with the most frequent updates and richest hockey detail
 ## 3) Goals
 1. Provide near-real-time visibility into Olympic hockey team standings and player statistics.
 2. Enable fast filtering, searching, and sorting across key metrics.
-3. Ensure clean architecture for maintainability (data layer, domain layer, GUI layer, theme layer).
+3. Ensure maintainable full-stack architecture in a single codebase/runtime.
 4. Make configuration portable and secure through `.env`-driven settings.
-5. Support offline cache behavior so the app remains usable during temporary connectivity loss.
+5. Support offline-aware behavior using cached server snapshots.
 6. Allow CSV export for standings and player statistics.
 
 ## 4) Non-Goals (V1)
 - No betting features or odds integrations.
 - No user accounts/authentication in V1.
 - No write-back to external provider systems.
-- No mobile app (desktop/web-desktop only in V1 scope).
+- No dedicated native mobile app (responsive web only in V1 scope).
+- No microservice split into separate independently deployed applications.
 
 ---
 
@@ -68,7 +71,7 @@ Goal: choose the source with the most frequent updates and richest hockey detail
 3. User sorts team standings by points, goal differential, wins, etc.
 4. User filters live games by group, stage, or country.
 5. User refreshes data manually and/or lets auto-refresh run.
-6. User continues viewing most recent cached data when offline.
+6. User continues viewing most recent cached data when live calls fail.
 7. User exports current table view to CSV.
 
 ---
@@ -76,7 +79,7 @@ Goal: choose the source with the most frequent updates and richest hockey detail
 ## 6) Functional Requirements
 
 ### 6.1 Data Acquisition
-- The app must fetch data from Olympic hockey data providers/APIs.
+- Server routes in the same app must fetch data from Olympic hockey providers/APIs.
 - Must support:
   - Team standings
   - Player statistics
@@ -86,7 +89,7 @@ Goal: choose the source with the most frequent updates and richest hockey detail
 - Graceful handling of API failures/timeouts with retry/backoff.
 
 ### 6.2 Search
-- Global search input that supports:
+- Global search input in React UI that supports:
   - Team name (full/partial)
   - Player name (full/partial)
 - Results update in-place with debounce (e.g., 250–400ms).
@@ -102,90 +105,89 @@ Goal: choose the source with the most frequent updates and richest hockey detail
   - Position (for players)
   - Minimum games played
 
-### 6.4 Views / GUI
-- Primary implementation: Python desktop GUI (`PySide6` recommended).
-- Required screens/panels:
-  1. **Dashboard** (live games + quick standings snapshot)
-  2. **Teams** (sortable standings/stat table)
-  3. **Players** (sortable/searchable player stats)
-  4. **Game Detail** (selected live game events/stat lines, if available)
-- Responsive layout for common laptop resolutions.
+### 6.4 Web Views / UI
+Required routes/screens:
+1. **Dashboard** (live games + quick standings snapshot)
+2. **Teams** (sortable standings/stat table)
+3. **Players** (sortable/searchable player stats)
+4. **Game Detail** (selected live game events/stat lines, if available)
+
+UI requirements:
+- Responsive layout for desktop/laptop and tablet.
+- Loading skeletons and empty states.
+- Error banner/toast when stale cache is shown.
 
 ### 6.5 Theming
-- Theme definition must be isolated in a dedicated file/module.
-- Theme should be reusable globally across all screens.
+- Theme tokens/styles isolated in dedicated front-end modules.
+- Theme reusable globally across all screens.
 - Support at least light and dark variants (dark can be default).
 
 ### 6.6 Configuration & Environment
-- All runtime/configurable values must come from environment variables.
-- Use `.env` + loader for local development.
-- Include `.env.example` with required keys documented.
+- All runtime/config values (client + server) must come from environment variables.
+- Use `.env` for local development and `.env.example` for documentation.
+- Server config must validate required values at startup.
 
-### 6.7 Virtual Environment
-- Project must include clear setup instructions using `python -m venv .venv`.
-- All dependencies installed in `.venv` only.
+### 6.7 Runtime / Dev Environment
+- Single project started via one command in development.
+- Vite handles front-end build tooling.
+- Integrated server process handles API proxy/integration, cache, and export endpoints.
+- Production build outputs one deployable full-stack artifact.
 
-### 6.8 Offline Cache (Required)
-- Persist last successful payloads to local cache storage.
-- On connectivity/provider failure, show cached data with a visible “stale data” indicator and timestamp.
-- Auto-recover to live mode when connection returns.
+### 6.8 Cache (Required)
+- Integrated server persists last successful payloads to local cache storage.
+- On connectivity/provider failure, server serves cached data with stale metadata.
+- Front end shows visible “stale data” indicator and timestamp.
 
 ### 6.9 CSV Export (Required)
 - Export current filtered/sorted team table to CSV.
 - Export current filtered/sorted player table to CSV.
-- Export file path and delimiter configurable via env/default preferences.
+- Export endpoint returns downloadable file.
+- Export file name pattern and delimiter configurable via env/default preferences.
 
 ---
 
-## 7) Suggested Technical Architecture
+## 7) Suggested Technical Architecture (Single App)
 
-### 7.1 Python-Native Architecture (Primary)
-- `app/main.py` – app entry point
-- `app/config.py` – env var loading/validation
-- `app/data/clients/*.py` – external API clients
-- `app/data/repositories/*.py` – normalized data access
-- `app/services/*.py` – business logic (standings, rankings, transformations)
-- `app/cache/*.py` – local cache read/write + staleness handling
-- `app/export/csv_exporter.py` – CSV export service
-- `app/gui/views/*.py` – screens/components
-- `app/gui/widgets/*.py` – reusable GUI widgets
-- `app/gui/theme.py` – universal theme definitions
-- `app/models/*.py` – typed entities (Team, Player, Game, Standing)
+### 7.1 Repository Structure
+- `app/` – single full-stack project
+- `app/src/` – React + Vite client code
+- `app/src/pages/*` – route-level views
+- `app/src/components/*` – reusable UI components
+- `app/src/features/*` – domain modules (teams, players, games)
+- `app/src/theme/*` – design tokens, color modes, global styles
+- `app/server/` – integrated server-side routes/services
+- `app/server/routes/*` – API endpoints for standings/players/games/export
+- `app/server/providers/*` – external provider clients/adapters
+- `app/server/cache/*` – cache read/write + staleness handling
+- `app/server/services/*` – business logic + transformations
+- `app/server/models/*` – typed entities (Team, Player, Game, Standing)
 
-### 7.2 Alternative Option: Vite + TypeScript Front-End
-Because you suggested Vite/TypeScript as an alternative, this is a valid option if preferred for richer table UX:
-- Front-end: Vite + React + TypeScript.
-- Back-end: Python (`FastAPI`) for provider integrations/cache/export logic.
-- Packaging choices:
-  - Browser-hosted internal app, or
-  - Desktop bundle via Tauri/Electron if local desktop distribution is needed.
+### 7.2 Data Flow
+1. React app triggers initial dashboard load.
+2. Requests go to same-app server routes (`/api/*`).
+3. Server calls provider adapters and normalizes payloads.
+4. Cache stores latest successful snapshots.
+5. Server returns normalized live or stale data with metadata.
+6. React UI renders tables/cards and refreshes on configured interval.
 
-**Recommendation:** keep Python-native GUI as default for fastest delivery to the original requirement, while preserving a migration path to Vite/TS if UI complexity grows.
-
-### 7.3 Data Flow
-1. GUI triggers initial load.
-2. Service layer requests repositories.
-3. Repositories call API clients and normalize provider-specific fields.
-4. Services compute derived metrics (e.g., points per game).
-5. Cache layer stores latest successful snapshots.
-6. GUI binds data to tables/cards and updates on refresh timer.
-
-### 7.4 Error Handling
+### 7.3 Error Handling
 - Distinguish between:
   - Network errors
   - API schema errors
   - Missing data
-- Show non-blocking notifications in GUI.
-- Use last known good cached data when available.
+- Server returns typed error payloads.
+- UI shows non-blocking notifications and fallback states.
 
 ---
 
 ## 8) Environment Variables (Initial)
 
+### Single App (`app/.env`)
 ```env
 # Runtime
 APP_ENV=development
 LOG_LEVEL=INFO
+PORT=5173
 
 # Provider
 DATA_PROVIDER=sportradar
@@ -202,8 +204,8 @@ RETRY_BACKOFF_SECONDS=2
 DEFAULT_TOURNAMENT_YEAR=2026
 DEFAULT_DIVISION=both   # men|women|both
 
-# UI/Theme
-THEME_MODE=dark         # dark|light
+# UI
+DEFAULT_THEME=dark      # dark|light
 
 # Cache
 CACHE_ENABLED=true
@@ -221,79 +223,15 @@ Notes:
 
 ---
 
-## 9) UX Requirements
-- Fast startup (<3 seconds in normal network conditions).
-- Table interactions (sort/filter/search) should feel immediate.
-- Clear empty/error/loading states.
-- Keyboard-friendly navigation for search and table traversal.
-- Visible stale/offline banner when serving cached data.
-
----
-
-## 10) Performance Requirements
-- Initial data load target: <= 2.5s on stable broadband.
-- Periodic refresh should not freeze UI thread (use worker thread/async task).
-- Search/filter operations on currently loaded dataset should complete <= 100ms for typical tournament-size data.
-- Cache read fallback should render within <= 500ms after network failure detection.
-
----
-
-## 11) Security & Compliance
-- Secrets (API keys) only from env, never hardcoded.
-- `.env` excluded from version control.
-- No personally sensitive data expected; still sanitize logs and avoid dumping raw credentials.
-
----
-
-## 12) Observability
-- Structured logging for fetch, transform, cache, export, and GUI update cycles.
-- Log levels controlled by env var.
-- Optional telemetry hooks for API latency, refresh success rate, and cache-hit ratio.
-
----
-
-## 13) Testing Strategy
-- Unit tests:
-  - API response normalization
-  - standings/stat calculations
-  - config validation
-  - cache freshness logic
-  - CSV export formatting
-- Integration tests:
-  - API client + repository contract tests with mocked responses
-- GUI tests:
-  - smoke tests for rendering major views
-  - sorting/search behavior tests where feasible
-
----
-
-## 14) Delivery Milestones
-1. **M1 – Foundation**
-   - Project scaffolding, venv setup docs, env config loader, base GUI shell, theme module.
-2. **M2 – Data Layer + Cache**
-   - Provider integration, models, repositories, refresh pipeline, offline cache.
-3. **M3 – Core UX**
-   - Dashboard, men/women toggles, team/player tables, sorting/search/filter.
-4. **M4 – Export + Hardening**
-   - CSV export, error states, logging, tests, packaging for Windows/macOS/Linux.
-
----
-
-## 15) Acceptance Criteria (V1)
-- App runs from inside `.venv` and launches successfully on Windows, macOS, and Linux.
-- `.env` controls provider URL, API key, refresh interval, cache behavior, and theme.
-- Live game panel updates automatically at configured interval.
-- Team standings and player stats are visible, searchable, and sortable for both men’s and women’s tournaments.
-- Theme is loaded from a standalone module and applied globally.
-- App falls back to cached data when offline and clearly indicates stale timestamp.
-- User can export displayed team/player stats to CSV.
-
----
-
-## 16) Resolved Product Decisions (from stakeholder feedback)
-1. **Data source:** prioritize the most frequently updated, most detailed provider (Sportradar-class feed).
-2. **Tournament scope:** both men’s and women’s tournaments in V1.
-3. **Platform scope:** Windows, macOS, Linux.
-4. **Offline behavior:** required in V1 (cache + stale indicator).
-5. **Export:** CSV required in V1.
-6. **Alternative stack:** Vite + TypeScript is viable; keep as optional architecture path.
+## 9) Delivery Milestones
+1. **M1 – Foundation (Week 1)**
+   - Single full-stack Vite project scaffolded.
+   - Integrated server routes scaffolded (`/api`).
+   - Shared contracts and mock data.
+2. **M2 – Core Stats UX (Week 2)**
+   - Dashboard, Teams, Players pages complete.
+   - Search/sort/filter working end-to-end.
+3. **M3 – Live + Resilience (Week 3)**
+   - Live game panel, refresh loop, cache fallback, stale indicators.
+4. **M4 – Export + Hardening (Week 4)**
+   - CSV export, error handling polish, performance checks, release docs.
